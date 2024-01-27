@@ -1,9 +1,9 @@
+import { JoinColumn, ManyToOne, OneToMany, Column, Entity } from 'typeorm'
 import { APIEmbed } from 'discord.js'
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm'
 
-import { EntityBase } from './common'
 import { PanelCategory } from './panel-category.entity'
 import { Server } from './server.entity'
+import { EntityBase } from './common'
 
 @Entity('panels')
 export class Panel extends EntityBase {

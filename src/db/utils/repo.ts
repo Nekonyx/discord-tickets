@@ -1,4 +1,4 @@
-import { EntityTarget, ObjectLiteral, Repository } from 'typeorm'
+import { ObjectLiteral, EntityTarget, Repository } from 'typeorm'
 
 import { dataSource } from '../data-source'
 

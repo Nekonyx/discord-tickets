@@ -1,11 +1,11 @@
+import { FindOptionsWhere, FindManyOptions, FindOneOptions } from 'typeorm'
 import { APIEmbed } from 'discord.js'
-import { FindManyOptions, FindOneOptions, FindOptionsWhere } from 'typeorm'
 
-import { getRepo, Panel, Server } from '../db'
+import { getRepo, Panel } from '../db'
 
 interface IConditionsBase {
-  id?: string
   conditions?: FindOptionsWhere<Panel>
+  id?: string
 }
 
 export interface IGetPanelListParams extends IConditionsBase {
@@ -17,43 +17,15 @@ export interface IGetOnePanelParams extends IConditionsBase {
 }
 
 export interface ICreatePanelParams {
-  name: string
-  embed: APIEmbed
   serverId: string
+  embed: APIEmbed
+  name: string
 }
+
+export interface IDeleteServerParams extends IConditionsBase {}
 
 export class PanelService {
   private readonly repo = getRepo(Panel)
-
-  public async getList(params: IGetPanelListParams = {}): Promise<Panel[]> {
-    return this.repo.find({
-      where: this.makeConditions(params),
-      ...params.opts
-    })
-  }
-
-  public async getOne(
-    params: IGetOnePanelParams = {}
-  ): Promise<Panel | undefined> {
-    const panel = await this.repo.findOne({
-      where: this.makeConditions(params),
-      ...params.opts
-    })
-
-    return panel ?? undefined
-  }
-
-  public async create(params: ICreatePanelParams): Promise<Panel> {
-    const panel = this.repo.create({
-      name: params.name,
-      embed: params.embed,
-      serverId: params.serverId
-    })
-
-    await this.repo.insert(panel)
-
-    return panel
-  }
 
   private makeConditions(params: IConditionsBase): FindOptionsWhere<Panel> {
     const conditions = params.conditions || {}
@@ -63,5 +35,43 @@ export class PanelService {
     }
 
     return conditions
+  }
+
+  public async create(params: ICreatePanelParams): Promise<Panel> {
+    const panel = this.repo.create({
+      serverId: params.serverId,
+      embed: params.embed,
+      name: params.name
+    })
+
+    await this.repo.insert(panel)
+
+    return panel
+  }
+
+  public async save(panel: Panel): Promise<Panel> {
+    return this.repo.save(panel)
+  }
+
+  public async delete(params: IDeleteServerParams): Promise<void> {
+    await this.repo.softDelete(this.makeConditions(params))
+  }
+
+  public async getOne(
+    params: IGetOnePanelParams = {}
+  ): Promise<undefined | Panel> {
+    const panel = await this.repo.findOne({
+      where: this.makeConditions(params),
+      ...params.opts
+    })
+
+    return panel ?? undefined
+  }
+
+  public async getList(params: IGetPanelListParams = {}): Promise<Panel[]> {
+    return this.repo.find({
+      where: this.makeConditions(params),
+      ...params.opts
+    })
   }
 }

@@ -1,30 +1,33 @@
 import {
-  ActionRowBuilder,
-  APIEmbed,
   ApplicationCommandOptionType,
-  CommandInteraction,
-  ComponentBuilder,
-  EmbedBuilder,
-  ModalBuilder,
   ModalSubmitInteraction,
   PermissionFlagsBits,
-  TextChannel,
+  CommandInteraction,
+  ActionRowBuilder,
   TextInputBuilder,
-  TextInputStyle
+  TextInputStyle,
+  EmbedBuilder,
+  ModalBuilder,
+  TextChannel,
+  APIEmbed
 } from 'discord.js'
 import {
-  Discord,
   ModalComponent,
-  Slash,
+  SlashOption,
   SlashGroup,
-  SlashOption
+  Discord,
+  Slash
 } from 'discordx'
 
-import { Color } from '../../../constants'
-import { PanelService } from '../../../services/panel.service'
+import {
+  deserializeEditModalId,
+  editModalIdPattern,
+  panelAutocomplete
+} from '../../utils'
 import { ServerService } from '../../../services/server.service'
+import { PanelService } from '../../../services/panel.service'
 import { createPanelMessage } from '../../helpers'
-import { panelAutocomplete } from '../../utils/autocomplete'
+import { Color } from '../../../constants'
 
 const groupName = 'panel'
 const createModalId = 'panel-create'
@@ -32,9 +35,9 @@ const editModalId = 'panel-edit'
 
 @SlashGroup(groupName)
 @SlashGroup({
-  name: groupName,
+  defaultMemberPermissions: [PermissionFlagsBits.Administrator],
   description: 'Управление панелями',
-  defaultMemberPermissions: [PermissionFlagsBits.Administrator]
+  name: groupName
 })
 @Discord()
 export class PanelCommand {
@@ -42,8 +45,8 @@ export class PanelCommand {
   private readonly serverService = new ServerService()
 
   @Slash({
-    name: 'create',
-    description: 'Создать панель'
+    description: 'Создать панель',
+    name: 'create'
   })
   public async create(interaction: CommandInteraction) {
     const modal = new ModalBuilder({
@@ -51,7 +54,7 @@ export class PanelCommand {
       customId: createModalId
     })
 
-    const fields: ComponentBuilder<any>[] = [
+    const fields = [
       new TextInputBuilder()
         .setStyle(TextInputStyle.Short)
         .setCustomId('name')
@@ -69,45 +72,108 @@ export class PanelCommand {
     ]
 
     for (const component of fields) {
-      modal.addComponents(new ActionRowBuilder<any>().addComponents(component))
+      modal.addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(component)
+      )
     }
 
     await interaction.showModal(modal)
   }
 
   @Slash({
-    name: 'edit',
-    description: 'Редактировать панель'
+    description: 'Редактировать панель',
+    name: 'edit'
   })
-  public async edit() {
+  public async edit(
+    @SlashOption({
+      type: ApplicationCommandOptionType.String,
+      autocomplete: panelAutocomplete,
+      description: 'ID панели',
+      required: true,
+      name: 'id'
+    })
+    id: string,
+    interaction: CommandInteraction
+  ) {
     const modal = new ModalBuilder({
       title: 'Редактирование панели',
-      customId: editModalId,
-      components: [
-        //
-      ]
+      customId: editModalId
+    })
+
+    const panel = await this.panelService.getOne({ id })
+
+    if (!panel) {
+      console.error(
+        `Panel ${id} was not found, though autocomplete was triggered`
+      )
+      return interaction.reply({ content: 'Панель не найдена' })
+    }
+
+    const fields = [
+      new TextInputBuilder()
+        .setStyle(TextInputStyle.Short)
+        .setCustomId('name')
+        .setLabel('Название панели')
+        .setPlaceholder('К примеру: Поддержка')
+        .setValue(panel.name),
+      new TextInputBuilder()
+        .setStyle(TextInputStyle.Paragraph)
+        .setCustomId('embed')
+        .setLabel('Настройки эмбеда')
+        .setPlaceholder(
+          'Можно указать содержимое эмбеда или JSON объект с полной настройкой.'
+        )
+        .setValue(JSON.stringify(panel.embed))
+    ]
+
+    for (const component of fields) {
+      modal.addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(component)
+      )
+    }
+
+    await interaction.showModal(modal)
+  }
+
+  @Slash({
+    description: 'Удалить панель',
+    name: 'delete'
+  })
+  public async delete(
+    @SlashOption({
+      type: ApplicationCommandOptionType.String,
+      autocomplete: panelAutocomplete,
+      description: 'ID панели',
+      required: true,
+      name: 'id'
+    })
+    id: string,
+    interaction: CommandInteraction
+  ) {
+    await interaction.deferReply({
+      ephemeral: true
+    })
+
+    await this.panelService.delete({
+      id
+    })
+
+    return interaction.followUp({
+      content: `Панель "${id}" удалена`
     })
   }
 
   @Slash({
-    name: 'delete',
-    description: 'Удалить панель'
-  })
-  public async delete() {
-    //
-  }
-
-  @Slash({
-    name: 'restore',
-    description: 'Восстановить эмбед панели'
+    description: 'Восстановить эмбед панели',
+    name: 'restore'
   })
   public async restore(
     @SlashOption({
       type: ApplicationCommandOptionType.String,
-      name: 'id',
+      autocomplete: panelAutocomplete,
       description: 'ID панели',
       required: true,
-      autocomplete: panelAutocomplete
+      name: 'id'
     })
     id: string,
     interaction: CommandInteraction
@@ -117,18 +183,18 @@ export class PanelCommand {
     })
 
     const panel = await this.panelService.getOne({
-      id,
       opts: {
         relations: {
-          server: true,
-          categories: true
+          categories: true,
+          server: true
         }
-      }
+      },
+      id
     })
 
     console.log({
-      panel,
-      guildId: interaction.guildId
+      guildId: interaction.guildId,
+      panel
     })
 
     if (!panel || panel.server.guildId !== interaction.guildId) {
@@ -137,6 +203,13 @@ export class PanelCommand {
         ephemeral: true
       })
     }
+
+    // review: please review this approach
+    // if (!panel.categories.length) {
+    //   return interaction.followUp({
+    //     content: `Панель "${id}" не имеет категорий и не может быть восстановлена`
+    //   })
+    // }
 
     await createPanelMessage(panel, interaction.channel as TextChannel)
 
@@ -177,18 +250,24 @@ export class PanelCommand {
         .toJSON()
     }
 
-    const server = await this.serverService.getOne({
-      guildId: interaction.guildId!
-    })
+    const server = await this.serverService
+      .getOne({
+        guildId: interaction.guildId!
+      })
+      .then((server) => {
+        return server
+          ? server
+          : this.serverService.create({ guildId: interaction.guildId! })
+      })
 
     if (!server) {
-      throw new Error('Server not found. Try to re-invite bot.')
+      throw new Error('Server not found.')
     }
 
-    const panel = await this.panelService.create({
+    await this.panelService.create({
+      serverId: server.id,
       name: nameInput,
-      embed,
-      serverId: server.id
+      embed
     })
 
     await interaction.followUp({
@@ -198,7 +277,54 @@ export class PanelCommand {
   }
 
   @ModalComponent({
-    id: editModalId
+    id: editModalIdPattern
   })
-  private async editModal(interaction: ModalSubmitInteraction) {}
+  private async editModal(interaction: ModalSubmitInteraction) {
+    await interaction.deferReply({
+      ephemeral: true
+    })
+
+    const { panelId } = deserializeEditModalId(interaction.customId)
+    const [nameInput, embedInput] = [
+      interaction.fields.getTextInputValue('name'),
+      interaction.fields.getTextInputValue('embed')
+    ]
+
+    if (!nameInput) {
+      return interaction.followUp({
+        content: 'Название панели не может быть пустым'
+      })
+    }
+
+    let embed: APIEmbed
+
+    try {
+      embed = JSON.parse(embedInput)
+    } catch {
+      embed = new EmbedBuilder()
+        .setTitle(nameInput)
+        .setDescription(embedInput)
+        .setColor(Color.Blue)
+        .toJSON()
+    }
+
+    const panel = await this.panelService.getOne({
+      id: panelId
+    })
+
+    if (!panel) {
+      return interaction.followUp({
+        content: `Панель "${panelId}" не найдена`
+      })
+    }
+
+    panel.embed = embed
+    panel.name = nameInput
+
+    await this.panelService.save(panel)
+
+    await interaction.followUp({
+      content: `Панель "${nameInput}" успешно обновлена`
+    })
+  }
 }

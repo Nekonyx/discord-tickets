@@ -1,11 +1,15 @@
+import { DataSource } from 'typeorm'
+import { resolve } from 'path'
 import 'reflect-metadata'
 
-import { resolve } from 'path'
-import { DataSource } from 'typeorm'
+const migrate = false
 
 export const dataSource = new DataSource({
-  type: 'sqlite',
-  logging: true,
-  database: resolve(process.cwd(), './data/sqlite.db'),
   entities: [resolve(__dirname, './entities/**/*.entity.{ts,js}')],
+  migrations: [resolve(__dirname, './migrations/**/*.{ts,js}')],
+  database: resolve(process.cwd(), './data/sqlite.db'),
+  migrationsRun: migrate,
+  synchronize: migrate,
+  type: 'sqlite',
+  logging: true
 })

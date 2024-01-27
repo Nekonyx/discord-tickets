@@ -1,12 +1,10 @@
-import 'dotenv/config'
-import 'reflect-metadata'
-
-import { resolve } from 'path'
-
 import { importx } from '@discordx/importer'
+import { resolve } from 'path'
+import 'reflect-metadata'
+import 'dotenv/config'
 
-import { bot } from './bot'
 import { dataSource } from './db'
+import { bot } from './bot'
 
 run()
   .then(() => {
@@ -24,7 +22,7 @@ async function run() {
     resolve(__dirname, './bot/events/**/*.{ts,js}')
   )
 
-  console.log('initializing databae...')
+  console.log('initializing database...')
   await dataSource.initialize()
 
   console.log('logging in...')

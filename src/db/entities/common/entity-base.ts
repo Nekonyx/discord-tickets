@@ -1,10 +1,10 @@
-import { randomUUID } from 'crypto'
 import {
   CreateDateColumn,
   DeleteDateColumn,
-  PrimaryColumn,
-  UpdateDateColumn
+  UpdateDateColumn,
+  PrimaryColumn
 } from 'typeorm'
+import { randomUUID } from 'crypto'
 
 export abstract class EntityBase {
   @PrimaryColumn('uuid')

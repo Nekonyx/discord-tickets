@@ -1,48 +1,45 @@
 import {
-  ActionRowBuilder,
-  APIButtonComponent,
-  APIEmbed,
   ApplicationCommandOptionType,
-  ButtonBuilder,
-  ButtonStyle,
-  Channel,
-  ChannelType,
-  CommandInteraction,
-  ComponentBuilder,
-  EmbedBuilder,
-  GuildBasedChannel,
-  ModalBuilder,
   ModalSubmitInteraction,
-  TextBasedChannel,
-  TextChannel,
+  CommandInteraction,
+  APIButtonComponent,
+  ActionRowBuilder,
   TextInputBuilder,
-  TextInputStyle
+  TextInputStyle,
+  ButtonBuilder,
+  ModalBuilder,
+  EmbedBuilder,
+  ChannelType,
+  TextChannel,
+  ButtonStyle,
+  APIEmbed
 } from 'discord.js'
 import {
-  Discord,
   ModalComponent,
-  Slash,
+  SlashOption,
   SlashGroup,
-  SlashOption
+  Discord,
+  Slash
 } from 'discordx'
 
-import { Color } from '../../../constants'
-import { Panel } from '../../../db'
+import {
+  deserializeCreateCategoryModalId,
+  serializeCreateCategoryModalId,
+  createCategoryModalIdPattern,
+  panelAutocomplete
+} from '../../utils'
 import { PanelCategoryService } from '../../../services/panel-category.service'
 import { PanelService } from '../../../services/panel.service'
-import { serializePanelButtonId } from '../../utils'
-import { panelAutocomplete } from '../../utils/autocomplete'
 import { rootGroupName } from './constants'
+import { Color } from '../../../constants'
 
 const groupName = 'category'
-const createModalId = 'panel-category-create'
-const editModalId = 'panel-category-edit'
 
 @SlashGroup(groupName, rootGroupName)
 @SlashGroup({
+  description: 'Управление категориями панелей',
   root: rootGroupName,
-  name: groupName,
-  description: 'Управление категориями панелей'
+  name: groupName
 })
 @Discord()
 export class PanelCategoryCommand {
@@ -50,34 +47,37 @@ export class PanelCategoryCommand {
   private readonly panelCategoryService = new PanelCategoryService()
 
   @Slash({
-    name: 'create',
-    description: 'Создать категорию панели (интерактивно)'
+    description: 'Создать категорию панели (интерактивно)',
+    name: 'create'
   })
   public async create(
     @SlashOption({
       type: ApplicationCommandOptionType.Channel,
-      name: 'channel',
-      description: 'Канал для тикетов',
       channelTypes: [ChannelType.GuildText],
+      description: 'Канал для тикетов',
+      name: 'channel',
       required: true
     })
     channel: TextChannel,
     @SlashOption({
       type: ApplicationCommandOptionType.String,
-      name: 'panel',
+      autocomplete: panelAutocomplete,
       description: 'Панель',
       required: true,
-      autocomplete: panelAutocomplete
+      name: 'panel'
     })
     panelId: string,
     interaction: CommandInteraction
   ) {
     const modal = new ModalBuilder({
-      title: 'Создание категории панели',
-      customId: createModalId
+      customId: serializeCreateCategoryModalId({
+        channelId: channel.id,
+        panelId
+      }),
+      title: 'Создание категории панели'
     })
 
-    const fields: ComponentBuilder<any>[] = [
+    const fields = [
       new TextInputBuilder()
         .setStyle(TextInputStyle.Short)
         .setCustomId('name')
@@ -107,40 +107,34 @@ export class PanelCategoryCommand {
         .setPlaceholder(
           'Можно указать содержимое эмбеда или JSON объект с полной настройкой.'
         )
-        .setRequired(true),
-      new TextInputBuilder()
-        .setStyle(TextInputStyle.Short)
-        .setCustomId('meta')
-        .setLabel('Необходимые данные (оставьте нетронутым)')
-        .setPlaceholder('Ну не надо было трогать это поле')
         .setRequired(true)
-        .setValue(JSON.stringify([channel.id, panelId]))
     ]
 
     for (const component of fields) {
-      modal.addComponents(new ActionRowBuilder<any>().addComponents(component))
+      modal.addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(component)
+      )
     }
 
     await interaction.showModal(modal)
   }
 
   @ModalComponent({
-    id: createModalId
+    id: createCategoryModalIdPattern
   })
   private async createModal(interaction: ModalSubmitInteraction) {
     await interaction.deferReply({
       ephemeral: true
     })
 
-    const [nameInput, slugInput, buttonInput, embedInput, metaInput] = [
+    const [nameInput, slugInput, buttonInput, embedInput] = [
       interaction.fields.getTextInputValue('name'),
       interaction.fields.getTextInputValue('slug'),
       interaction.fields.getTextInputValue('button'),
-      interaction.fields.getTextInputValue('embed'),
-      interaction.fields.getTextInputValue('meta')
+      interaction.fields.getTextInputValue('embed')
     ]
 
-    if (!nameInput || !slugInput || !buttonInput || !embedInput || !metaInput) {
+    if (!nameInput || !slugInput || !buttonInput || !embedInput) {
       await interaction.followUp({
         content: 'Все поля должны быть заполнены'
       })
@@ -148,9 +142,9 @@ export class PanelCategoryCommand {
       return
     }
 
-    // bruh
-    const [channelId, panelId] = JSON.parse(metaInput)
-
+    const { channelId, panelId } = deserializeCreateCategoryModalId(
+      interaction.customId
+    )
     const channel = await interaction.guild!.channels.fetch(channelId)
     const panel = await this.panelService.getOne({
       id: panelId
@@ -187,11 +181,12 @@ export class PanelCategoryCommand {
     }
 
     await this.panelCategoryService.create({
+      panelId: panel.id,
       name: nameInput,
       slug: slugInput,
+      channelId,
       button,
-      embed,
-      panelId: panel.id
+      embed
     })
 
     await interaction.followUp({

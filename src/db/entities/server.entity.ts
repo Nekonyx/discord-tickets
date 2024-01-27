@@ -1,7 +1,7 @@
-import { Column, Entity, OneToMany } from 'typeorm'
+import { OneToMany, Column, Entity } from 'typeorm'
 
-import { EntityBase } from './common'
 import { Panel } from './panel.entity'
+import { EntityBase } from './common'
 
 @Entity('servers')
 export class Server extends EntityBase {

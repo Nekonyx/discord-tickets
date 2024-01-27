@@ -1,11 +1,11 @@
-import { FindManyOptions, FindOneOptions, FindOptionsWhere } from 'typeorm'
+import { FindOptionsWhere, FindManyOptions, FindOneOptions } from 'typeorm'
 
 import { getRepo, Server } from '../db'
 
 interface IConditionsBase {
-  id?: string
-  guildId?: string
   conditions?: FindOptionsWhere<Server>
+  guildId?: string
+  id?: string
 }
 
 export interface IGetOneServerParams extends IConditionsBase {
@@ -20,12 +20,14 @@ export interface ICreateServerParams {
   guildId: string
 }
 
+export interface IDeleteServerParams extends IConditionsBase {}
+
 export class ServerService {
   private readonly repo = getRepo(Server)
 
   public async getOne(
     params: IGetOneServerParams = {}
-  ): Promise<Server | undefined> {
+  ): Promise<undefined | Server> {
     const server = await this.repo.findOne({
       where: this.makeConditions(params),
       ...params.opts
@@ -42,13 +44,16 @@ export class ServerService {
   }
 
   public async create(params: ICreateServerParams): Promise<Server> {
-    const server = this.repo.create({
-      guildId: params.guildId
-    })
+    const server = this.repo.create(params)
 
     await this.repo.insert(server)
 
     return server
+  }
+
+  public async delete(params: IDeleteServerParams): Promise<void> {
+    await this.repo.softDelete(this.makeConditions(params))
+    return
   }
 
   private makeConditions(params: IConditionsBase): FindOptionsWhere<Server> {
