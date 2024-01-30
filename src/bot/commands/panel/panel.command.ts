@@ -11,19 +11,9 @@ import {
   TextChannel,
   APIEmbed
 } from 'discord.js'
-import {
-  ModalComponent,
-  SlashOption,
-  SlashGroup,
-  Discord,
-  Slash
-} from 'discordx'
+import { ModalComponent, SlashOption, SlashGroup, Discord, Slash } from 'discordx'
 
-import {
-  deserializeEditModalId,
-  editModalIdPattern,
-  panelAutocomplete
-} from '../../utils'
+import { deserializeEditModalId, editModalIdPattern, panelAutocomplete } from '../../utils'
 import { ServerService } from '../../../services/server.service'
 import { PanelService } from '../../../services/panel.service'
 import { createPanelMessage } from '../../helpers'
@@ -65,16 +55,12 @@ export class PanelCommand {
         .setStyle(TextInputStyle.Paragraph)
         .setCustomId('embed')
         .setLabel('Настройки эмбеда')
-        .setPlaceholder(
-          'Можно указать содержимое эмбеда или JSON объект с полной настройкой.'
-        )
+        .setPlaceholder('Можно указать содержимое эмбеда или JSON объект с полной настройкой.')
         .setRequired(true)
     ]
 
     for (const component of fields) {
-      modal.addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(component)
-      )
+      modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(component))
     }
 
     await interaction.showModal(modal)
@@ -103,9 +89,7 @@ export class PanelCommand {
     const panel = await this.panelService.getOne({ id })
 
     if (!panel) {
-      console.error(
-        `Panel ${id} was not found, though autocomplete was triggered`
-      )
+      console.error(`Panel ${id} was not found, though autocomplete was triggered`)
       return interaction.reply({ content: 'Панель не найдена' })
     }
 
@@ -120,16 +104,12 @@ export class PanelCommand {
         .setStyle(TextInputStyle.Paragraph)
         .setCustomId('embed')
         .setLabel('Настройки эмбеда')
-        .setPlaceholder(
-          'Можно указать содержимое эмбеда или JSON объект с полной настройкой.'
-        )
+        .setPlaceholder('Можно указать содержимое эмбеда или JSON объект с полной настройкой.')
         .setValue(JSON.stringify(panel.embed))
     ]
 
     for (const component of fields) {
-      modal.addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(component)
-      )
+      modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(component))
     }
 
     await interaction.showModal(modal)
@@ -255,9 +235,7 @@ export class PanelCommand {
         guildId: interaction.guildId!
       })
       .then((server) => {
-        return server
-          ? server
-          : this.serverService.create({ guildId: interaction.guildId! })
+        return server ? server : this.serverService.create({ guildId: interaction.guildId! })
       })
 
     if (!server) {

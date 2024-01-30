@@ -1,11 +1,7 @@
 export const panelButtonPrefix = 'ticket-create'
-export const panelButtonIdPattern = new RegExp(
-  `^${panelButtonPrefix}\\-(.+?)+$`
-)
+export const panelButtonIdPattern = new RegExp(`^${panelButtonPrefix}\\-(.+?)+$`)
 export const createCategoryModalPrefix = 'panel-category-create'
-export const createCategoryModalIdPattern = new RegExp(
-  `^${createCategoryModalPrefix}`
-)
+export const createCategoryModalIdPattern = new RegExp(`^${createCategoryModalPrefix}`)
 export const editModalId = 'panel-edit'
 export const editModalIdPattern = new RegExp(`^${editModalId}`)
 

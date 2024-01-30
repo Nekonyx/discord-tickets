@@ -15,10 +15,7 @@ import { TimestampStylesString, TimestampStyles } from 'discord.js'
  * // 30.10.21
  * @returns строка в указанном формате
  */
-export function dateToStr(
-  date: Date = new Date(),
-  format: string = 'D.M.y h:m'
-) {
+export function dateToStr(date: Date = new Date(), format: string = 'D.M.y h:m') {
   const pad = (num: number) => num.toString().padStart(2, '0')
   const formatDict = {
     y: date.getFullYear().toString().slice(-2),
@@ -47,9 +44,6 @@ export function dateToStr(
  * // <t:1635100000:t> → 15:20
  * @returns строка-timestamp
  */
-export function timestamp(
-  date: Date,
-  style: TimestampStylesString = TimestampStyles.RelativeTime
-) {
+export function timestamp(date: Date, style: TimestampStylesString = TimestampStyles.RelativeTime) {
   return `<t:${Math.floor(date.getTime() / 1000)}:${style}>`
 }

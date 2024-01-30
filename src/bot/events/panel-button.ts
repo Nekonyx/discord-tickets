@@ -7,11 +7,7 @@ import {
 } from 'discord.js'
 import { ButtonComponent, Discord } from 'discordx'
 
-import {
-  deserializePanelButtonId,
-  panelButtonIdPattern,
-  isPanelButtonId
-} from '../utils'
+import { deserializePanelButtonId, panelButtonIdPattern, isPanelButtonId } from '../utils'
 import { PanelCategoryService } from '../../services/panel-category.service'
 import { TicketService } from '../../services/ticket.service'
 
@@ -43,9 +39,7 @@ export class PanelButtonEvents {
       })
     }
 
-    const channel = await interaction.guild!.channels.fetch(
-      panelCategory.channelId
-    )
+    const channel = await interaction.guild!.channels.fetch(panelCategory.channelId)
 
     if (!channel) {
       console.error(`Channel ${panelCategory.channelId} was not found`)

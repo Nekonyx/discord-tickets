@@ -42,15 +42,11 @@ export class TicketCommand {
     id: string | null,
     interaction: CommandInteraction
   ) {
-    const channel = await interaction.guild?.channels.fetch(
-      id || interaction.channelId
-    )
+    const channel = await interaction.guild?.channels.fetch(id || interaction.channelId)
 
     if (!channel || !channel.isTextBased()) {
       return await interaction.followUp({
-        content: `Канал ${
-          id || interaction.channelId
-        } не найден или он не текстовый`
+        content: `Канал ${id || interaction.channelId} не найден или он не текстовый`
       })
     }
 
@@ -94,8 +90,7 @@ export class TicketCommand {
       channel: tickets.every((t) => t.channelId === id),
       user: tickets.every((t) => t.userId === id)
     }
-    const threads = (await interaction.guild!.channels.fetchActiveThreads())
-      .threads
+    const threads = (await interaction.guild!.channels.fetchActiveThreads()).threads
 
     const embed = new EmbedBuilder()
       .setDescription(
@@ -104,9 +99,7 @@ export class TicketCommand {
           : 'Тикет' +
               (by.user
                 ? ` ${
-                    interaction.guild?.members.cache.get(id)
-                      ? 'участника'
-                      : 'пользователя'
+                    interaction.guild?.members.cache.get(id) ? 'участника' : 'пользователя'
                   } ${userMention(id)}`
                 : by.channel
                 ? ` в канале ${channelMention(id)}`
@@ -152,9 +145,9 @@ export class TicketCommand {
       ephemeral: true
     })
 
-    const channel = (await interaction.guild?.channels.fetch(
-      id || interaction.channelId
-    )) as ThreadChannel | undefined
+    const channel = (await interaction.guild?.channels.fetch(id || interaction.channelId)) as
+      | ThreadChannel
+      | undefined
 
     if (!channel || !channel.isTextBased()) {
       return await interaction.followUp({
@@ -168,9 +161,7 @@ export class TicketCommand {
 
     if (!ticket) {
       return await interaction.followUp({
-        content: `Тикет канала ${channelMention(
-          channel.id
-        )} не найден в базе данных`
+        content: `Тикет канала ${channelMention(channel.id)} не найден в базе данных`
       })
     }
 
@@ -192,9 +183,7 @@ export class TicketCommand {
       )
       .setColor(Color.Red)
       .setFooter({
-        iconURL: (
-          await interaction.guild?.members.fetch(interaction.user.id)
-        )?.displayAvatarURL(),
+        iconURL: (await interaction.guild?.members.fetch(interaction.user.id))?.displayAvatarURL(),
         text: ticket.id
       })
 

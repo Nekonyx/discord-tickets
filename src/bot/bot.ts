@@ -21,9 +21,7 @@ bot.once('ready', async () => {
   const guilds = await bot.guilds.fetch()
   const servers = await serverService.getList()
 
-  for (const guild of guilds
-    .filter((g) => !servers.find((s) => s.guildId === g.id))
-    .values()) {
+  for (const guild of guilds.filter((g) => !servers.find((s) => s.guildId === g.id)).values()) {
     await serverService.create({ guildId: guild.id })
   }
 

@@ -4,9 +4,7 @@ import { TicketService } from '../../services/ticket.service'
 import { PanelService } from '../../services/panel.service'
 import { dateToStr } from './date-processing'
 
-export async function panelAutocomplete(
-  interaction: AutocompleteInteraction
-): Promise<void> {
+export async function panelAutocomplete(interaction: AutocompleteInteraction): Promise<void> {
   const panelService = new PanelService()
   const panels = await panelService.getList({
     conditions: {
@@ -40,14 +38,12 @@ export async function ticketAutocomplete(
       }
     }
   })
-  const threads = (await interaction.guild!.channels.fetchActiveThreads())
-    .threads
+  const threads = (await interaction.guild!.channels.fetchActiveThreads()).threads
 
   await interaction.respond(
     tickets.map((ticket) => ({
       name:
-        (threads.get(ticket.channelId)?.name || ticket.userId) +
-        ` ${dateToStr(ticket.createdAt)}`,
+        (threads.get(ticket.channelId)?.name || ticket.userId) + ` ${dateToStr(ticket.createdAt)}`,
       value: returnChannel ? ticket.channelId : ticket.id
     }))
   )

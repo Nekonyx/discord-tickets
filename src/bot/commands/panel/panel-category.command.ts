@@ -14,13 +14,7 @@ import {
   ButtonStyle,
   APIEmbed
 } from 'discord.js'
-import {
-  ModalComponent,
-  SlashOption,
-  SlashGroup,
-  Discord,
-  Slash
-} from 'discordx'
+import { ModalComponent, SlashOption, SlashGroup, Discord, Slash } from 'discordx'
 
 import {
   deserializeCreateCategoryModalId,
@@ -88,32 +82,24 @@ export class PanelCategoryCommand {
         .setStyle(TextInputStyle.Short)
         .setCustomId('slug')
         .setLabel('Короткое название категории')
-        .setPlaceholder(
-          'Используется в названии тикета. К примеру: tech-support'
-        )
+        .setPlaceholder('Используется в названии тикета. К примеру: tech-support')
         .setRequired(true),
       new TextInputBuilder()
         .setStyle(TextInputStyle.Paragraph)
         .setCustomId('button')
         .setLabel('Настройки кнопки')
-        .setPlaceholder(
-          'Можно указать название кнопки или JSON объект с полной настройкой.'
-        )
+        .setPlaceholder('Можно указать название кнопки или JSON объект с полной настройкой.')
         .setRequired(true),
       new TextInputBuilder()
         .setStyle(TextInputStyle.Paragraph)
         .setCustomId('embed')
         .setLabel('Настройки приветственного эмбеда')
-        .setPlaceholder(
-          'Можно указать содержимое эмбеда или JSON объект с полной настройкой.'
-        )
+        .setPlaceholder('Можно указать содержимое эмбеда или JSON объект с полной настройкой.')
         .setRequired(true)
     ]
 
     for (const component of fields) {
-      modal.addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(component)
-      )
+      modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(component))
     }
 
     await interaction.showModal(modal)
@@ -142,9 +128,7 @@ export class PanelCategoryCommand {
       return
     }
 
-    const { channelId, panelId } = deserializeCreateCategoryModalId(
-      interaction.customId
-    )
+    const { channelId, panelId } = deserializeCreateCategoryModalId(interaction.customId)
     const channel = await interaction.guild!.channels.fetch(channelId)
     const panel = await this.panelService.getOne({
       id: panelId
@@ -164,10 +148,7 @@ export class PanelCategoryCommand {
     try {
       button = JSON.parse(buttonInput)
     } catch {
-      button = new ButtonBuilder()
-        .setLabel(buttonInput)
-        .setStyle(ButtonStyle.Primary)
-        .toJSON()
+      button = new ButtonBuilder().setLabel(buttonInput).setStyle(ButtonStyle.Primary).toJSON()
     }
 
     try {

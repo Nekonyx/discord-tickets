@@ -1,10 +1,4 @@
-import {
-  ActionRowBuilder,
-  ButtonBuilder,
-  EmbedBuilder,
-  TextChannel,
-  Message
-} from 'discord.js'
+import { ActionRowBuilder, ButtonBuilder, EmbedBuilder, TextChannel, Message } from 'discord.js'
 
 import { serializePanelButtonId } from '../utils'
 import { Panel } from '../../db'
@@ -17,10 +11,7 @@ import { Panel } from '../../db'
  *
  * @returns Сообщение с панелью
  */
-export async function createPanelMessage(
-  panel: Panel,
-  channel: TextChannel
-): Promise<Message> {
+export async function createPanelMessage(panel: Panel, channel: TextChannel): Promise<Message> {
   const row = new ActionRowBuilder<ButtonBuilder>()
 
   if (!panel.categories) {
