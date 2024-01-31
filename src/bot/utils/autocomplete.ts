@@ -24,7 +24,7 @@ export async function panelAutocomplete(interaction: AutocompleteInteraction): P
 
 export async function ticketAutocomplete(
   interaction: AutocompleteInteraction,
-  { returnChannel }: { returnChannel?: boolean } = {}
+  { returnChannel, closed }: { returnChannel?: boolean; closed?: boolean } = {}
 ): Promise<void> {
   const ticketService = new TicketService()
   const tickets = await ticketService.getList({
@@ -35,7 +35,8 @@ export async function ticketAutocomplete(
             guildId: interaction.guildId!
           }
         }
-      }
+      },
+      isClosed: closed
     }
   })
   const threads = (await interaction.guild!.channels.fetchActiveThreads()).threads

@@ -15,6 +15,9 @@ export class Ticket extends EntityBase {
   @Column('varchar', { length: 21 })
   public userId!: string
 
+  @Column('boolean', { default: false })
+  public isClosed!: boolean
+
   @Column('uuid')
   public categoryId!: string
 }

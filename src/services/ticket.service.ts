@@ -49,6 +49,14 @@ export class TicketService {
     await this.repo.softDelete(this.makeConditions(params))
   }
 
+  public async close(params: IGetOneTicketParams): Promise<void> {
+    await this.repo.update(this.makeConditions(params), { isClosed: true })
+  }
+
+  public async reopen(params: IGetOneTicketParams): Promise<void> {
+    await this.repo.update(this.makeConditions(params), { isClosed: false })
+  }
+
   public async getOne(params: IGetOneTicketParams = {}): Promise<undefined | Ticket> {
     const ticket = await this.repo.findOne({
       where: this.makeConditions(params),
