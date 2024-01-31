@@ -33,19 +33,13 @@ export class PanelButtonEvents {
     })
 
     if (!panelCategory) {
-      console.error('Panel category was not found')
-      return await interaction.followUp({
-        content: 'Категория не найдена, свяжитесь с разработчиком'
-      })
+      throw new Error('Panel category was not found')
     }
 
     const channel = await interaction.guild!.channels.fetch(panelCategory.channelId)
 
     if (!channel) {
-      console.error(`Channel ${panelCategory.channelId} was not found`)
-      return await interaction.followUp({
-        content: 'Канал не найден, свяжитесь с разработчиком'
-      })
+      throw new Error(`Channel ${panelCategory.channelId} was not found`)
     }
 
     await interaction.followUp({
@@ -58,18 +52,10 @@ export class PanelButtonEvents {
         autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek,
         type: ChannelType.PrivateThread
       })
-      .catch((e) => {
-        console.error(e)
-        return null
-      })
+      .catch((e) => null)
 
     if (!thread) {
-      console.error('Thread was not created')
-      await interaction.followUp({
-        content: 'Не удалось создать тикет, свяжитесь с разработчиком',
-        ephemeral: true
-      })
-      return
+      throw new Error('Thread was not created')
     }
 
     await thread.send({

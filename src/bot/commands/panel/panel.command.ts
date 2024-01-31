@@ -89,8 +89,7 @@ export class PanelCommand {
     const panel = await this.panelService.getOne({ id })
 
     if (!panel) {
-      console.error(`Panel ${id} was not found, though autocomplete was triggered`)
-      return interaction.reply({ content: 'Панель не найдена' })
+      throw new Error(`Panel ${id} was not found, though autocomplete was triggered`)
     }
 
     const fields = [
