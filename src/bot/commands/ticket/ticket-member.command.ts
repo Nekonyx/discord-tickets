@@ -58,7 +58,7 @@ export class TicketMemberCommand {
     }
 
     /** Затронутые участники */
-    const members = new Set<GuildMember>()
+    const affectedMembers = new Set<GuildMember>()
 
     /** Ветка с тикетом */
     const thread = interaction.channel as ThreadChannel
@@ -68,7 +68,7 @@ export class TicketMemberCommand {
     // Если указан участник, то добавляем его
     // Если указана роль, то добавляем всех участников с этой ролью
     if (target instanceof GuildMember) {
-      members.add(target)
+      affectedMembers.add(target)
     } else {
       const guildMembers = await interaction.guild!.members.fetch()
       const roleMembers = guildMembers.filter((m) => !m.user.bot && m.roles.cache.has(target.id))
@@ -81,44 +81,54 @@ export class TicketMemberCommand {
       }
 
       for (const member of roleMembers.values()) {
-        members.add(member)
+        affectedMembers.add(member)
       }
     }
 
     // Удаляем из списка участников, которые уже есть в тикете
-    for (const member of members) {
+    for (const member of affectedMembers) {
       if (thread.members.cache.has(member.id)) {
-        members.delete(member)
+        affectedMembers.delete(member)
       }
     }
 
     // Если никого не осталось, то делать тут нечего
-    if (members.size === 0) {
+    if (affectedMembers.size === 0) {
       return interaction.followUp({
         content: `Все указанные участники уже есть в тикете`
       })
     }
 
-    const membersArray = [...members]
+    const members = [...affectedMembers]
+
+    // Права, которые будут выданы на канал-категорию
+    const requiredChannelPermissions = [
+      PermissionFlagsBits.ViewChannel,
+      PermissionFlagsBits.ReadMessageHistory,
+      PermissionFlagsBits.SendMessagesInThreads
+    ]
 
     // Выдача прав на просмотр канала
-    const membersWithoutPermission = membersArray.filter((member) => {
-      return !channel.permissionsFor(member).has(PermissionFlagsBits.ViewChannel)
+    const membersWithoutPermission = members.filter((member) => {
+      return requiredChannelPermissions.some(
+        (permission) => !channel.permissionsFor(member).has(permission)
+      )
     })
 
     if (membersWithoutPermission.length > 0) {
       await Promise.all(
         membersWithoutPermission.map((member) =>
           channel.permissionOverwrites.create(member, {
-            ViewChannel: true
+            ViewChannel: true,
+            ReadMessageHistory: true,
+            SendMessagesInThreads: true
           })
         )
       )
     }
 
-    // что-то на англосакском
-    // mentions work as members.add, but don't trigger non-deletable system message
-    const pingMessage = await thread.send(membersArray.map((m) => m.toString()).join())
+    // Упоминания работают как members.add, но не создают неудаляемые системные сообщения
+    const pingMessage = await thread.send(members.map((m) => m.toString()).join())
 
     await Promise.all([
       pingMessage.delete(),
@@ -126,7 +136,7 @@ export class TicketMemberCommand {
       thread.send({
         embeds: [
           buildEmbed({
-            roleMembersMentions: membersArray.map((m) => m.toString()),
+            membersMentions: members.map((m) => m.toString()),
             moderator: interaction.user,
             target
           })
@@ -156,50 +166,49 @@ export class TicketMemberCommand {
     const ticket = await this.ticketService.getOne({
       channelId: interaction.channelId
     })
-    const targetIsMember = target instanceof GuildMember
+    const affectedMembers = new Set<GuildMember>()
+    const thread = interaction.channel as ThreadChannel
+    const channelThreads = [...thread.parent!.threads.cache.values()]
 
     if (!ticket) {
-      return await interaction.followUp({
+      return interaction.followUp({
         content: 'Используйте эту команду в канале, который является тикетом'
       })
     }
 
-    const channel = interaction.channel as ThreadChannel
-    // possible feature: delete categoryChannel permission overwrites if
-    // a) there were any b) it was the last user's ticket in the category
+    if (target instanceof GuildMember) {
+      affectedMembers.add(target)
+    } else {
+      const guildMembers = await interaction.guild!.members.fetch()
+      const roleMembers = guildMembers.filter((m) => !m.user.bot && m.roles.cache.has(target.id))
 
-    if (targetIsMember && !(await channel.members.fetch(target.id).catch(() => null))) {
-      return await interaction.followUp({
+      for (const member of roleMembers.values()) {
+        affectedMembers.add(member)
+      }
+    }
+
+    if (!affectedMembers.size) {
+      return interaction.followUp({
         content: `${target} нет в тикете`
       })
     }
 
-    let roleMembers: GuildMember[] = []
-
-    if (!targetIsMember) {
-      roleMembers = (await channel.members.fetch())
-        .map((m) => m.guildMember as GuildMember)
-        .filter((m) => !m.user.bot && m.roles.resolve(target.id))
-
-      if (!roleMembers.length) {
-        return await interaction.followUp({
-          content: `В тикете не было участников с ролью ${target} (боты не учитываются)`
-        })
+    for (const member of affectedMembers) {
+      await thread.members.remove(member.user.id) // создастся системное сообщение
+      if (
+        // проверяем, отсутствует ли участник в каждом из тикетов канала-категории
+        // и если отсутствует во всех, то убираем права с канала-категории
+        channelThreads.every((t) => !t.members.cache.get(member.user.id))
+      ) {
+        thread.parent!.permissionOverwrites.delete(member)
       }
     }
 
-    if (targetIsMember) {
-      await channel.members.remove(target.id) // also creates non-deletable system message
-    } else {
-      for (const member of roleMembers.values()) {
-        await channel.members.remove(member.id) // also creates non-deletable system message
-      }
-    }
     interaction.deleteReply()
-    channel.send({
+    thread.send({
       embeds: [
         buildEmbed({
-          roleMembersMentions: roleMembers.map((m) => userMention(m.id)),
+          membersMentions: [...affectedMembers].map((m) => m.toString()),
           moderator: interaction.user,
           add: false,
           target
@@ -210,39 +219,39 @@ export class TicketMemberCommand {
 }
 
 function buildEmbed({
-  roleMembersMentions,
+  membersMentions,
   add = true,
   moderator,
   target
 }: {
-  roleMembersMentions?: string[]
+  membersMentions: string[]
   target: GuildMember | Role
   moderator: User
   add?: boolean
 }) {
   const targetIsMember = target instanceof GuildMember
-  const plural = targetIsMember // bruh? can be significantly simplified by using only one variant
+  const single = targetIsMember
     ? true
-    : roleMembersMentions?.length
-    ? roleMembersMentions.length === 1
+    : membersMentions.length
+    ? membersMentions.length === 1
     : true
 
   const embed = new EmbedBuilder()
     .setColor(add ? Color.Green : Color.Red)
     .setTitle(
       add
-        ? `Добавление участник${plural ? 'а(-цы)' : 'ов'} в тикет`
-        : `Удаление участник${plural ? 'а(-цы)' : 'ов'} из тикета`
+        ? `Добавление участник${single ? 'а(-цы)' : 'ов'} в тикет`
+        : `Удаление участник${single ? 'а(-цы)' : 'ов'} из тикета`
     )
     .addFields({
-      value: userMention(moderator.id),
+      value: moderator.toString(),
       name: 'Модератор',
       inline: true
     })
     .addFields({
       value:
-        (targetIsMember ? userMention : roleMention)(target.id) +
-        (roleMembersMentions ? '\n' + roleMembersMentions?.join(', ') : ''),
+        (targetIsMember ? '' : roleMention(target.id)) +
+        (membersMentions ? '\n' + membersMentions.join(', ') : ''),
       name: targetIsMember ? 'Участник(-ца)' : 'Роль',
       inline: true
     })
