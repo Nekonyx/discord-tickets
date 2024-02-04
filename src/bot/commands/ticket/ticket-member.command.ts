@@ -85,6 +85,7 @@ export class TicketMemberCommand {
       }
     }
 
+    await thread.members.fetch()
     // Удаляем из списка участников, которые уже есть в тикете
     for (const member of affectedMembers) {
       if (thread.members.cache.has(member.id)) {
