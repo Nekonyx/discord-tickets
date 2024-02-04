@@ -217,18 +217,24 @@ export class TicketCommand {
       ephemeral: true
     })
 
-    const channel = (await interaction.guild?.channels.fetch(
+    const thread = (await interaction.guild?.channels.fetch(
       id || interaction.channelId
     )) as ThreadChannel
 
-    if (!channel || !channel.isTextBased()) {
+    if (!thread || !thread.isTextBased()) {
       return interaction.followUp({
-        content: 'Канал не найден или он не текстовый'
+        content: 'Ветка не найдена'
+      })
+    }
+
+    if (!thread.locked && !thread.archived) {
+      return interaction.followUp({
+        content: 'Ветка не закрыта'
       })
     }
 
     const ticket = await this.ticketService.getOne({
-      channelId: channel.id
+      channelId: thread.id
     })
 
     if (!ticket) {
@@ -257,9 +263,9 @@ export class TicketCommand {
         text: ticket.id
       })
 
-    await channel.send({ embeds: [embed] })
-    channel.setLocked(false)
-    channel.setArchived(false)
+    await thread.send({ embeds: [embed] })
+    thread.setLocked(false)
+    thread.setArchived(false)
     interaction.followUp({ content: 'Тикет успешно открыт' })
   }
 }

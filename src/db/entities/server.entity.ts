@@ -5,7 +5,7 @@ import { EntityBase } from './common'
 
 @Entity('servers')
 export class Server extends EntityBase {
-  @Column('varchar')
+  @Column('varchar', { length: 21 })
   public guildId!: string
 
   @OneToMany(() => Panel, (panel) => panel.server)

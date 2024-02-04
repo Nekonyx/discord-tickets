@@ -1,15 +1,15 @@
 import {
   ApplicationCommandOptionType,
+  PermissionOverwriteOptions,
+  PermissionFlagsBits,
   CommandInteraction,
+  ThreadChannel,
   EmbedBuilder,
   GuildMember,
-  PermissionFlagsBits,
-  Role,
-  TextChannel,
-  ThreadChannel,
-  User,
   roleMention,
-  userMention
+  TextChannel,
+  Role,
+  User
 } from 'discord.js'
 import { Discord, Slash, SlashGroup, SlashOption } from 'discordx'
 
@@ -102,11 +102,11 @@ export class TicketMemberCommand {
 
     const members = [...affectedMembers]
 
-    // Права, которые будут выданы на канал-категорию
-    const requiredChannelPermissions = [
-      PermissionFlagsBits.ViewChannel,
-      PermissionFlagsBits.ReadMessageHistory,
-      PermissionFlagsBits.SendMessagesInThreads
+    /** Права, которые будут выданы на канал-категорию */
+    const requiredChannelPermissions: (keyof PermissionOverwriteOptions)[] = [
+      'ViewChannel',
+      'ReadMessageHistory',
+      'SendMessagesInThreads'
     ]
 
     // Выдача прав на просмотр канала
@@ -115,21 +115,23 @@ export class TicketMemberCommand {
         (permission) => !channel.permissionsFor(member).has(permission)
       )
     })
+    // Создаём объект, который содержит в качестве ключей все значения массива requiredChannelPermissions
+    // и присваиваем каждому ключу значение true, тем самым выдавая все указанные права
+    const permissionsOverwrite = requiredChannelPermissions.reduce(
+      (acc: PermissionOverwriteOptions, permission) => ((acc[permission] = true), acc),
+      {}
+    )
 
     if (membersWithoutPermission.length > 0) {
       await Promise.all(
         membersWithoutPermission.map((member) =>
-          channel.permissionOverwrites.create(member, {
-            ViewChannel: true,
-            ReadMessageHistory: true,
-            SendMessagesInThreads: true
-          })
+          channel.permissionOverwrites.create(member, permissionsOverwrite)
         )
       )
     }
 
     // Упоминания работают как members.add, но не создают неудаляемые системные сообщения
-    const pingMessage = await thread.send(members.map((m) => m.toString()).join())
+    const pingMessage = await thread.send(members.map((m) => m.toString()).join(''))
 
     await Promise.all([
       pingMessage.delete(),
