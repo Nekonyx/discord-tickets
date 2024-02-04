@@ -1,6 +1,8 @@
 import {
+  PermissionOverwriteOptions,
   ThreadAutoArchiveDuration,
   BaseGuildTextChannel,
+  PermissionResolvable,
   ButtonInteraction,
   ChannelType,
   userMention
@@ -9,17 +11,20 @@ import { ButtonComponent, Discord } from 'discordx'
 
 import { deserializePanelButtonId, panelButtonIdPattern, isPanelButtonId } from '../utils'
 import { PanelCategoryService } from '../../services/panel-category.service'
+import { CategoryRoleService } from '../../services/category-role.service'
 import { TicketService } from '../../services/ticket.service'
 
 @Discord()
 export class PanelButtonEvents {
   private readonly panelCategoryService = new PanelCategoryService()
   private readonly ticketService = new TicketService()
+  private readonly categoryRoleService = new CategoryRoleService()
 
   @ButtonComponent({
     id: panelButtonIdPattern
   })
   public async onButtonInteraction(interaction: ButtonInteraction) {
+    // ? isn't it overkill after using «id: panelButtonIdPattern» above?
     if (!isPanelButtonId(interaction.customId)) {
       return
     }
@@ -68,5 +73,47 @@ export class PanelButtonEvents {
       userId: interaction.user.id,
       channelId: thread.id
     })
+
+    /** Привязанные к категории роли (модераторы, руководители) */
+    const categoryRoles = await this.categoryRoleService.getList({
+      conditions: {
+        categoryId: panelCategory.id
+      }
+    })
+    /** Участники, у которых есть любая из привязанных к категории ролей */
+    const categoryStaff = (await interaction.guild!.members.fetch()).filter((member) =>
+      categoryRoles.some((role) => member.roles.cache.has(role.roleId))
+    )
+    const categoryChannel = thread.parent!
+    const permissions: (keyof PermissionOverwriteOptions)[] = [
+      'ViewChannel',
+      'ReadMessageHistory',
+      'SendMessagesInThreads'
+    ]
+    // Создаём объект, который содержит в качестве ключей все значения массива requiredChannelPermissions
+    // и присваиваем каждому ключу значение true, тем самым выдавая все указанные права
+    const permissionsOverwrite = permissions.reduce(
+      (acc: PermissionOverwriteOptions, permission) => ((acc[permission] = true), acc),
+      {}
+    )
+
+    /** Роли без указанных в переменной permissions прав */
+    const categoryRolesWithoutRights = categoryRoles.filter((role) =>
+      permissions.some(
+        (permission) => !categoryChannel.permissionsFor(role.roleId)?.has(permission)
+      )
+    )
+
+    // Выдаём права на канал всем привявзанным к категории ролям
+    await Promise.all(
+      categoryRolesWithoutRights.map((role) =>
+        categoryChannel.permissionOverwrites.create(role.roleId, permissionsOverwrite)
+      )
+    )
+
+    // Упоминания работают как members.add, но не создают неудаляемые системные сообщения
+    // ! Может содержать повторения, не стал нагружать код добавлением [...new Set(categoryStaff)]
+    const pingMessage = await thread.send(categoryStaff.map((member) => member.toString()).join(''))
+    await pingMessage.delete()
   }
 }

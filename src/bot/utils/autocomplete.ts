@@ -1,5 +1,6 @@
 import { AutocompleteInteraction } from 'discord.js'
 
+import { PanelCategoryService } from '../../services/panel-category.service'
 import { TicketService } from '../../services/ticket.service'
 import { PanelService } from '../../services/panel.service'
 import { dateToStr } from './date-processing'
@@ -46,6 +47,27 @@ export async function ticketAutocomplete(
       name:
         (threads.get(ticket.channelId)?.name || ticket.userId) + ` ${dateToStr(ticket.createdAt)}`,
       value: returnChannel ? ticket.channelId : ticket.id
+    }))
+  )
+}
+
+export async function panelCategoryAutocomplete(interaction: AutocompleteInteraction) {
+  const panelCategoryService = new PanelCategoryService()
+
+  const categories = await panelCategoryService.getList({
+    conditions: {
+      panel: {
+        server: {
+          guildId: interaction.guildId!
+        }
+      }
+    }
+  })
+
+  await interaction.respond(
+    categories.map((category) => ({
+      name: category.name,
+      value: category.id
     }))
   )
 }

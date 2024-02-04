@@ -1,6 +1,7 @@
 import {
   ApplicationCommandOptionType,
   ModalSubmitInteraction,
+  RoleSelectMenuBuilder,
   CommandInteraction,
   APIButtonComponent,
   ActionRowBuilder,
@@ -20,9 +21,12 @@ import {
   deserializeCreateCategoryModalId,
   serializeCreateCategoryModalId,
   createCategoryModalIdPattern,
+  serializeCategoryRolesId,
+  panelCategoryAutocomplete,
   panelAutocomplete
 } from '../../utils'
 import { PanelCategoryService } from '../../../services/panel-category.service'
+import { CategoryRoleService } from '../../../services/category-role.service'
 import { PanelService } from '../../../services/panel.service'
 import { rootGroupName } from './constants'
 import { Color } from '../../../constants'
@@ -39,6 +43,7 @@ const groupName = 'category'
 export class PanelCategoryCommand {
   private readonly panelService = new PanelService()
   private readonly panelCategoryService = new PanelCategoryService()
+  private readonly categoryRoleService = new CategoryRoleService()
 
   @Slash({
     description: 'Создать категорию панели (интерактивно)',
@@ -103,6 +108,72 @@ export class PanelCategoryCommand {
     }
 
     await interaction.showModal(modal)
+  }
+
+  @Slash({
+    description: 'Назначить роли штата категории панели',
+    name: 'roles'
+  })
+  public async roles(
+    @SlashOption({
+      type: ApplicationCommandOptionType.String,
+      autocomplete: panelCategoryAutocomplete,
+      description: 'Категория панели',
+      required: true,
+      name: 'category'
+    })
+    panelCategoryId: string,
+    @SlashOption({
+      type: ApplicationCommandOptionType.Boolean,
+      description: 'Полностью очистить',
+      name: 'clear',
+      required: false
+    })
+    clear: boolean,
+    interaction: CommandInteraction
+  ) {
+    // Если clear равен True, то удаляем все привязанные к категории роли в базе данных
+    // а также в соответсвующем категории канале
+    if (clear) {
+      await interaction.deferReply({ ephemeral: true })
+
+      const panelCategory = await this.panelCategoryService.getOne({ id: panelCategoryId })
+      if (!panelCategory) {
+        throw new Error('Category was not found')
+      }
+      /** Привязанные к категории роли */
+      const roles = await this.categoryRoleService.getList({
+        conditions: { category: { id: panelCategoryId } }
+      })
+      const channel = (await interaction.guild?.channels.fetch(
+        panelCategory.channelId
+      )) as TextChannel
+      if (!channel) {
+        throw new Error('Category channel was not found')
+      }
+
+      await Promise.all([
+        // Удаляем все привязанные к категории роли из базы данных
+        this.categoryRoleService.delete({
+          conditions: { category: { id: panelCategoryId } }
+        }),
+        // Забираем права у каждой из ранее привязанных к категории роли
+        ...roles.map((role) => channel.permissionOverwrites.delete(role.roleId))
+      ])
+
+      return interaction.followUp(`Назначенные категории \`${panelCategory.name}\` были очищены`)
+    }
+    // Если clear равен False, либо не был передан, то возвращаем участнику меню с выбором ролей
+    // * Сами права ролям будут выданы лишь при открытии тикета. Данное меню лишь занесёт роли в БД
+    const roleselectMenu = new RoleSelectMenuBuilder()
+      .setCustomId(serializeCategoryRolesId({ categoryId: panelCategoryId }))
+      .setMinValues(1)
+      .setMaxValues(15)
+
+    await interaction.reply({
+      components: [new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(roleselectMenu)],
+      ephemeral: true
+    })
   }
 
   @ModalComponent({
