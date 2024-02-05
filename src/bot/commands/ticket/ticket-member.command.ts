@@ -1,7 +1,6 @@
 import {
   ApplicationCommandOptionType,
   PermissionOverwriteOptions,
-  PermissionFlagsBits,
   CommandInteraction,
   ThreadChannel,
   EmbedBuilder,
@@ -14,6 +13,7 @@ import {
 import { Discord, Slash, SlashGroup, SlashOption } from 'discordx'
 
 import { Color } from '../../../constants'
+import { TicketUserService } from '../../../services/ticket-user.service'
 import { TicketService } from '../../../services/ticket.service'
 import { rootGroupName } from './constants'
 
@@ -27,6 +27,7 @@ const groupName = 'member'
 })
 @Discord()
 export class TicketMemberCommand {
+  private readonly ticketUserService = new TicketUserService()
   private readonly ticketService = new TicketService()
 
   @Slash({
@@ -86,11 +87,20 @@ export class TicketMemberCommand {
     }
 
     await thread.members.fetch()
-    // Удаляем из списка участников, которые уже есть в тикете
+    // Если затронутый участник уже находится в тикете,
+    // удаляем его из списка затронутых участников
+    // Иначе создаем запись логируем (последующее) присоединение участника к тикету
     for (const member of affectedMembers) {
       if (thread.members.cache.has(member.id)) {
         affectedMembers.delete(member)
+        continue
       }
+
+      this.ticketUserService.create({
+        ticketId: ticket.id,
+        moderatorId: interaction.user.id,
+        userId: member.id
+      })
     }
 
     // Если никого не осталось, то делать тут нечего
@@ -204,6 +214,7 @@ export class TicketMemberCommand {
         channelThreads.every((t) => !t.members.cache.get(member.user.id))
       ) {
         thread.parent!.permissionOverwrites.delete(member)
+        this.ticketUserService.delete({ conditions: { ticketId: ticket.id, userId: member.id } })
       }
     }
 

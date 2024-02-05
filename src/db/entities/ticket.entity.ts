@@ -1,6 +1,7 @@
-import { JoinColumn, ManyToOne, Column, Entity } from 'typeorm'
+import { JoinColumn, ManyToOne, Column, Entity, OneToMany } from 'typeorm'
 
 import { PanelCategory } from './panel-category.entity'
+import { TicketUser } from './ticket-user.entity'
 import { EntityBase } from './common'
 
 @Entity('tickets')
@@ -20,4 +21,7 @@ export class Ticket extends EntityBase {
 
   @Column('uuid')
   public categoryId!: string
+
+  @OneToMany(() => TicketUser, (ticketUser) => ticketUser.ticket)
+  public users!: TicketUser[]
 }

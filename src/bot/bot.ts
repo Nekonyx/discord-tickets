@@ -1,6 +1,8 @@
 import { IntentsBitField } from 'discord.js'
 import { Client } from 'discordx'
 
+import { TicketUserService } from '../services/ticket-user.service'
+import { TicketService } from '../services/ticket.service'
 import { ServerService } from '../services/server.service'
 import { createErrorEmbed } from './helpers'
 import { captureError } from './utils'
@@ -15,6 +17,8 @@ export const bot = new Client({
   ]
 })
 
+const ticketUserService = new TicketUserService()
+const ticketService = new TicketService()
 const serverService = new ServerService()
 
 bot.once('ready', async () => {
@@ -40,6 +44,17 @@ bot.on('guildCreate', (guild) => {
 
 bot.on('guildDelete', (guild) => {
   serverService.delete({ guildId: guild.id })
+})
+
+// Обработчик покинувших тикет пользователей
+bot.on('threadMembersUpdate', async (_, removedMembers, thread) => {
+  if (!removedMembers.size || !thread.parent) return
+  const ticket = await ticketService.getOne({ channelId: thread.id })
+  if (!ticket) return
+
+  for (const member of removedMembers.values()) {
+    ticketUserService.delete({ conditions: { ticketId: ticket.id, userId: member.id } })
+  }
 })
 
 // Выполнение команд с обработкой ошибок
