@@ -90,7 +90,7 @@ export class PanelButtonEvents {
       'ReadMessageHistory',
       'SendMessagesInThreads'
     ]
-    // Создаём объект, который содержит в качестве ключей все значения массива requiredChannelPermissions
+    // Создаём объект, который содержит в качестве ключей все значения массива permissions
     // и присваиваем каждому ключу значение true, тем самым выдавая все указанные права
     const permissionsOverwrite = permissions.reduce(
       (acc: PermissionOverwriteOptions, permission) => ((acc[permission] = true), acc),
