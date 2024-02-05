@@ -3,7 +3,7 @@ import { JoinColumn, ManyToOne, Column, Entity } from 'typeorm'
 import { PanelCategory } from './panel-category.entity'
 import { EntityBase } from './common'
 
-@Entity('category-role')
+@Entity('category-roles')
 export class CategoryRole extends EntityBase {
   @Column('varchar', { length: 21 })
   public roleId!: string
