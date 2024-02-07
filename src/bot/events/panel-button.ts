@@ -97,6 +97,8 @@ export class PanelButtonEvents {
       {}
     )
 
+    if (!categoryStaff.size) return
+
     /** Роли без указанных в переменной permissions прав */
     const categoryRolesWithoutRights = categoryRoles.filter((role) =>
       permissions.some(
