@@ -1,9 +1,4 @@
-import {
-  CreateDateColumn,
-  DeleteDateColumn,
-  UpdateDateColumn,
-  PrimaryColumn
-} from 'typeorm'
+import { CreateDateColumn, DeleteDateColumn, UpdateDateColumn, PrimaryColumn } from 'typeorm'
 import { randomUUID } from 'crypto'
 
 export abstract class EntityBase {
