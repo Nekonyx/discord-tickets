@@ -4,7 +4,7 @@ import { Client } from 'discordx'
 import { TicketUserService } from '../services/ticket-user.service'
 import { TicketService } from '../services/ticket.service'
 import { ServerService } from '../services/server.service'
-import { createErrorEmbed } from './helpers'
+import { createThreadNameChangeEmbed, createErrorEmbed, logAction } from './helpers'
 import { captureError } from './utils'
 
 export const bot = new Client({
@@ -54,6 +54,17 @@ bot.on('threadMembersUpdate', async (_, removedMembers, thread) => {
 
   for (const member of removedMembers.values()) {
     ticketUserService.delete({ conditions: { ticketId: ticket.id, userId: member.id } })
+  }
+})
+
+bot.on('threadUpdate', async (oldThread, newThread) => {
+  // Логирование обновлений названий тикетов
+  if (
+    oldThread.name !== newThread.name &&
+    (await ticketService.getOne({ channelId: newThread.id }))
+  ) {
+    const embed = createThreadNameChangeEmbed({ oldThread, newThread })
+    await logAction({ thread: newThread, client: bot, embed })
   }
 })
 

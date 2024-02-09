@@ -15,6 +15,7 @@ import { Discord, Slash, SlashGroup, SlashOption } from 'discordx'
 import { Color } from '../../../constants'
 import { TicketUserService } from '../../../services/ticket-user.service'
 import { TicketService } from '../../../services/ticket.service'
+import { sendLogEmbed } from '../../helpers'
 import { rootGroupName } from './constants'
 
 const groupName = 'member'
@@ -49,7 +50,12 @@ export class TicketMemberCommand {
     })
 
     const ticket = await this.ticketService.getOne({
-      channelId: interaction.channelId
+      channelId: interaction.channelId,
+      opts: {
+        relations: {
+          category: true
+        }
+      }
     })
 
     if (!ticket) {
@@ -142,18 +148,20 @@ export class TicketMemberCommand {
 
     // Упоминания работают как members.add, но не создают неудаляемые системные сообщения
     const pingMessage = await thread.send(members.map((m) => m.toString()).join(''))
+    const embed = buildEmbed({
+      membersMentions: members.map((m) => m.toString()),
+      moderator: interaction.user,
+      target
+    })
 
     await Promise.all([
       pingMessage.delete(),
       interaction.deleteReply(),
-      thread.send({
-        embeds: [
-          buildEmbed({
-            membersMentions: members.map((m) => m.toString()),
-            moderator: interaction.user,
-            target
-          })
-        ]
+      sendLogEmbed({
+        thread,
+        client: interaction.client,
+        ticket,
+        embed
       })
     ])
   }
@@ -177,11 +185,18 @@ export class TicketMemberCommand {
     })
 
     const ticket = await this.ticketService.getOne({
-      channelId: interaction.channelId
+      channelId: interaction.channelId,
+      opts: {
+        relations: {
+          category: true
+        }
+      }
     })
     const affectedMembers = new Set<GuildMember>()
     const thread = interaction.channel as ThreadChannel
-    const channelThreads = [...thread.parent!.threads.cache.values()]
+    const channelThreads = [...thread.parent!.threads.cache.values()].filter(
+      (t) => t.id !== thread.id
+    )
 
     if (!ticket) {
       return interaction.followUp({
@@ -206,29 +221,35 @@ export class TicketMemberCommand {
       })
     }
 
+    const embed = buildEmbed({
+      membersMentions: [...affectedMembers].map((m) => m.toString()),
+      moderator: interaction.user,
+      add: false,
+      target
+    })
+
     for (const member of affectedMembers) {
       await thread.members.remove(member.user.id) // создастся системное сообщение
       if (
         // проверяем, отсутствует ли участник в каждом из тикетов канала-категории
         // и если отсутствует во всех, то убираем права с канала-категории
-        channelThreads.every((t) => !t.members.cache.get(member.user.id))
+        channelThreads.every((t) => !t.members.cache.get(member.user.id)) ||
+        !channelThreads.length
       ) {
         thread.parent!.permissionOverwrites.delete(member)
         this.ticketUserService.delete({ conditions: { ticketId: ticket.id, userId: member.id } })
       }
     }
 
-    interaction.deleteReply()
-    thread.send({
-      embeds: [
-        buildEmbed({
-          membersMentions: [...affectedMembers].map((m) => m.toString()),
-          moderator: interaction.user,
-          add: false,
-          target
-        })
-      ]
-    })
+    await Promise.all([
+      interaction.deleteReply(),
+      sendLogEmbed({
+        thread,
+        client: interaction.client,
+        ticket,
+        embed
+      })
+    ])
   }
 }
 
@@ -269,6 +290,7 @@ function buildEmbed({
       name: targetIsMember ? 'Участник(-ца)' : 'Роль',
       inline: true
     })
+    .setTimestamp(new Date())
 
   if (targetIsMember) {
     embed.setAuthor({

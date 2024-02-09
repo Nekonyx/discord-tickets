@@ -30,6 +30,9 @@ export class PanelCategory extends EntityBase {
   @Column('varchar', { length: 21 })
   public channelId!: string
 
+  @Column('varchar', { length: 21 })
+  public logChannelId!: string
+
   @OneToMany(() => Ticket, (ticket) => ticket.category)
   public tickets!: Ticket[]
 

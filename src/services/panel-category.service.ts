@@ -18,6 +18,7 @@ export interface IGetOnePanelCategoryParams extends IConditionsBase {
 
 export interface ICreatePanelCategoryParams {
   button: APIButtonComponent
+  logChannelId: string
   channelId: string
   embed: APIEmbed
   panelId: string

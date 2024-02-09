@@ -66,10 +66,19 @@ export class PanelCategoryCommand {
       name: 'panel'
     })
     panelId: string,
+    @SlashOption({
+      type: ApplicationCommandOptionType.Channel,
+      channelTypes: [ChannelType.GuildText],
+      description: 'Канал для логов',
+      required: true,
+      name: 'log'
+    })
+    logChannel: TextChannel,
     interaction: CommandInteraction
   ) {
     const modal = new ModalBuilder({
       customId: serializeCreateCategoryModalId({
+        logChannelId: logChannel.id,
         channelId: channel.id,
         panelId
       }),
@@ -199,7 +208,9 @@ export class PanelCategoryCommand {
       return
     }
 
-    const { channelId, panelId } = deserializeCreateCategoryModalId(interaction.customId)
+    const { channelId, panelId, logChannelId } = deserializeCreateCategoryModalId(
+      interaction.customId
+    )
     const channel = await interaction.guild!.channels.fetch(channelId)
     const panel = await this.panelService.getOne({
       id: panelId
@@ -236,6 +247,7 @@ export class PanelCategoryCommand {
       panelId: panel.id,
       name: nameInput,
       slug: slugInput,
+      logChannelId,
       channelId,
       button,
       embed

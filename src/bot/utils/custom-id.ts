@@ -42,13 +42,16 @@ export function isPanelButtonId(id: string): boolean {
  * @returns Custom ID модального окна создания категории
  */
 export function serializeCreateCategoryModalId({
+  logChannelId,
   channelId,
   panelId
 }: {
+  logChannelId: string
   channelId: string
   panelId: string
 }): string {
-  return `${createCategoryModalPrefix}%${channelId}%${panelId}` // ≈80 chars
+  // в худшем случае 98 символов (максимум можно 100)
+  return `${createCategoryModalPrefix}%${channelId}%${panelId}%${logChannelId}`
 }
 
 /**
@@ -58,11 +61,12 @@ export function serializeCreateCategoryModalId({
  * @returns panelID ID панели, которой будет принадлежать категория
  */
 export function deserializeCreateCategoryModalId(id: string): {
+  logChannelId: string
   channelId: string
   panelId: string
 } {
-  const [channelId, panelId] = id.split('%').slice(1)
-  return { channelId, panelId }
+  const [channelId, panelId, logChannelId] = id.split('%').slice(1)
+  return { channelId, panelId, logChannelId }
 }
 
 /**

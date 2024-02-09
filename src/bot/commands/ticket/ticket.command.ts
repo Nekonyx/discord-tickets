@@ -12,6 +12,7 @@ import discordTranscripts from 'discord-html-transcripts'
 
 import { ticketAutocomplete, timestamp, dateToStr } from '../../utils'
 import { TicketService } from '../../../services/ticket.service'
+import { sendLogEmbed } from '../../helpers'
 import { rootGroupName } from './constants'
 import { Color } from '../../../constants'
 
@@ -185,7 +186,7 @@ export class TicketCommand {
         text: ticket.id
       })
 
-    await thread.send({ embeds: [embed] })
+    await sendLogEmbed({ thread, client: interaction.client, ticket, embed })
     thread.setLocked(true)
     thread.setArchived(true)
     interaction.followUp({ content: 'Тикет успешно закрыт' })
@@ -263,7 +264,7 @@ export class TicketCommand {
         text: ticket.id
       })
 
-    await thread.send({ embeds: [embed] })
+    await sendLogEmbed({ thread, client: interaction.client, ticket, embed })
     thread.setLocked(false)
     thread.setArchived(false)
     interaction.followUp({ content: 'Тикет успешно открыт' })

@@ -2,8 +2,8 @@ import {
   PermissionOverwriteOptions,
   ThreadAutoArchiveDuration,
   BaseGuildTextChannel,
-  PermissionResolvable,
   ButtonInteraction,
+  EmbedBuilder,
   ChannelType,
   userMention
 } from 'discord.js'
@@ -13,6 +13,8 @@ import { deserializePanelButtonId, panelButtonIdPattern, isPanelButtonId } from 
 import { PanelCategoryService } from '../../services/panel-category.service'
 import { CategoryRoleService } from '../../services/category-role.service'
 import { TicketService } from '../../services/ticket.service'
+import { Color } from '../../constants'
+import { logAction } from '../helpers'
 
 @Discord()
 export class PanelButtonEvents {
@@ -97,8 +99,6 @@ export class PanelButtonEvents {
       {}
     )
 
-    if (!categoryStaff.size) return
-
     /** Роли без указанных в переменной permissions прав */
     const categoryRolesWithoutRights = categoryRoles.filter((role) =>
       permissions.some(
@@ -115,7 +115,24 @@ export class PanelButtonEvents {
 
     // Упоминания работают как members.add, но не создают неудаляемые системные сообщения
     // ! Может содержать повторения, не стал нагружать код добавлением [...new Set(categoryStaff)]
-    const pingMessage = await thread.send(categoryStaff.map((member) => member.toString()).join(''))
-    await pingMessage.delete()
+    if (categoryStaff.size) {
+      const pingMessage = await thread.send(
+        categoryStaff.map((member) => member.toString()).join('')
+      )
+      await pingMessage.delete()
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle('Тикет создан')
+      .setDescription(
+        `Тикет был создан ${userMention(interaction.user.id)} в категории ${panelCategory.name}`
+      )
+      .setColor(Color.Yellow)
+
+    await logAction({
+      thread,
+      client: interaction.client,
+      embed
+    })
   }
 }
