@@ -4,9 +4,7 @@ import { dataSource } from '../data-source'
 
 const cache = new Map<EntityTarget<ObjectLiteral>, Repository<any>>()
 
-export function getRepo<T extends ObjectLiteral>(
-  target: EntityTarget<T>
-): Repository<T> {
+export function getRepo<T extends ObjectLiteral>(target: EntityTarget<T>): Repository<T> {
   let repo = cache.get(target)
 
   if (!repo) {

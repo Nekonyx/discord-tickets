@@ -1,13 +1,11 @@
 export const panelButtonPrefix = 'ticket-create'
-export const panelButtonIdPattern = new RegExp(
-  `^${panelButtonPrefix}\\-(.+?)+$`
-)
+export const panelButtonIdPattern = new RegExp(`^${panelButtonPrefix}\\-(.+?)+$`)
 export const createCategoryModalPrefix = 'panel-category-create'
-export const createCategoryModalIdPattern = new RegExp(
-  `^${createCategoryModalPrefix}`
-)
+export const createCategoryModalIdPattern = new RegExp(`^${createCategoryModalPrefix}`)
 export const editModalId = 'panel-edit'
 export const editModalIdPattern = new RegExp(`^${editModalId}`)
+export const categoryRolesId = 'category-roles'
+export const categoryRolesIdPattern = new RegExp(`^${categoryRolesId}`)
 
 /**
  * Создаёт Custom ID кнопки создания тикета
@@ -44,13 +42,16 @@ export function isPanelButtonId(id: string): boolean {
  * @returns Custom ID модального окна создания категории
  */
 export function serializeCreateCategoryModalId({
+  logChannelId,
   channelId,
   panelId
 }: {
+  logChannelId: string
   channelId: string
   panelId: string
 }): string {
-  return `${createCategoryModalPrefix}%${channelId}%${panelId}` // ≈80 chars
+  // в худшем случае 98 символов (максимум можно 100)
+  return `${createCategoryModalPrefix}%${channelId}%${panelId}%${logChannelId}`
 }
 
 /**
@@ -60,11 +61,12 @@ export function serializeCreateCategoryModalId({
  * @returns panelID ID панели, которой будет принадлежать категория
  */
 export function deserializeCreateCategoryModalId(id: string): {
+  logChannelId: string
   channelId: string
   panelId: string
 } {
-  const [channelId, panelId] = id.split('%').slice(1)
-  return { channelId, panelId }
+  const [channelId, panelId, logChannelId] = id.split('%').slice(1)
+  return { channelId, panelId, logChannelId }
 }
 
 /**
@@ -72,7 +74,7 @@ export function deserializeCreateCategoryModalId(id: string): {
  * @param id строка для проверки
  * @returns Результат проверки
  */
-export function isCreateCategoryModalId(id: string) {
+export function isCreateCategoryModalId(id: string): boolean {
   return !id.match(createCategoryModalIdPattern)
 }
 // create category ↑
@@ -102,7 +104,37 @@ export function deserializeEditModalId(id: string): { panelId: string } {
  * @param id строка для проверки
  * @returns Результат проверки
  */
-export function isEditModalId(id: string) {
+export function isEditModalId(id: string): boolean {
   return !id.match(editModalIdPattern)
 }
 // edit ↑
+
+// category roles ↓
+/**
+ * Создаёт Custom ID селектора относящихся к категории ролей
+ * @param categoryId ID категории, к которой нужно привязать роли
+ * @returns Custom ID селектора ролей
+ */
+export function serializeCategoryRolesId({ categoryId }: { categoryId: string }): string {
+  return `${categoryRolesId}%${categoryId}`
+}
+
+/**
+ * Десериализует Custom ID селектора относящихся к категории ролей
+ * @param id Custom ID селектора относящихся к категории ролей
+ * @returns categoryId ID категории, к которой нужно привязать роли
+ */
+export function deserializeCategoryRolesId(id: string): { categoryId: string } {
+  const [categoryId] = id.split('%').slice(1)
+  return { categoryId }
+}
+
+/**
+ * Проверяет, является ли строка Custom ID селектора относящихся к категории ролей
+ * @param id строка для проверки
+ * @returns Результат проверки
+ */
+export function isCategoryRolesId(id: string): boolean {
+  return !id.match(categoryRolesIdPattern)
+}
+// category roles ↑

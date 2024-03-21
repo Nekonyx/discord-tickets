@@ -18,6 +18,7 @@ export interface IGetOnePanelCategoryParams extends IConditionsBase {
 
 export interface ICreatePanelCategoryParams {
   button: APIButtonComponent
+  logChannelId: string
   channelId: string
   embed: APIEmbed
   panelId: string
@@ -28,18 +29,14 @@ export interface ICreatePanelCategoryParams {
 export class PanelCategoryService {
   private readonly repo = getRepo(PanelCategory)
 
-  public async getList(
-    params: IGetPanelCategoryListParams = {}
-  ): Promise<PanelCategory[]> {
+  public async getList(params: IGetPanelCategoryListParams = {}): Promise<PanelCategory[]> {
     return this.repo.find({
       where: this.makeConditions(params),
       ...params.opts
     })
   }
 
-  public async getOne(
-    params: IGetOnePanelCategoryParams = {}
-  ): Promise<PanelCategory | undefined> {
+  public async getOne(params: IGetOnePanelCategoryParams = {}): Promise<PanelCategory | undefined> {
     const category = await this.repo.findOne({
       where: this.makeConditions(params),
       ...params.opts
@@ -48,18 +45,14 @@ export class PanelCategoryService {
     return category ?? undefined
   }
 
-  public async create(
-    params: ICreatePanelCategoryParams
-  ): Promise<PanelCategory> {
+  public async create(params: ICreatePanelCategoryParams): Promise<PanelCategory> {
     const category = this.repo.create(params)
     await this.repo.insert(category)
 
     return category
   }
 
-  private makeConditions(
-    params: IConditionsBase
-  ): FindOptionsWhere<PanelCategory> {
+  private makeConditions(params: IConditionsBase): FindOptionsWhere<PanelCategory> {
     const conditions = params.conditions || {}
 
     if (typeof params.id !== 'undefined') {

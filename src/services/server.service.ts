@@ -25,9 +25,7 @@ export interface IDeleteServerParams extends IConditionsBase {}
 export class ServerService {
   private readonly repo = getRepo(Server)
 
-  public async getOne(
-    params: IGetOneServerParams = {}
-  ): Promise<undefined | Server> {
+  public async getOne(params: IGetOneServerParams = {}): Promise<undefined | Server> {
     const server = await this.repo.findOne({
       where: this.makeConditions(params),
       ...params.opts

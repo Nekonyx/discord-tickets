@@ -1,6 +1,7 @@
 import { JoinColumn, ManyToOne, OneToMany, Column, Entity } from 'typeorm'
 import { APIButtonComponent, APIEmbed } from 'discord.js'
 
+import { CategoryRole } from './category-role.entity'
 import { Ticket } from './ticket.entity'
 import { Panel } from './panel.entity'
 import { EntityBase } from './common'
@@ -26,9 +27,15 @@ export class PanelCategory extends EntityBase {
   @Column('uuid')
   public panelId!: string
 
-  @Column('text')
+  @Column('varchar', { length: 21 })
   public channelId!: string
+
+  @Column('varchar', { length: 21 })
+  public logChannelId!: string
 
   @OneToMany(() => Ticket, (ticket) => ticket.category)
   public tickets!: Ticket[]
+
+  @OneToMany(() => CategoryRole, (categoryRole) => categoryRole.category)
+  public roles!: CategoryRole[]
 }

@@ -57,9 +57,7 @@ export class PanelService {
     await this.repo.softDelete(this.makeConditions(params))
   }
 
-  public async getOne(
-    params: IGetOnePanelParams = {}
-  ): Promise<undefined | Panel> {
+  public async getOne(params: IGetOnePanelParams = {}): Promise<undefined | Panel> {
     const panel = await this.repo.findOne({
       where: this.makeConditions(params),
       ...params.opts

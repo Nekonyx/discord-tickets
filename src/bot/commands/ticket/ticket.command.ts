@@ -12,6 +12,7 @@ import discordTranscripts from 'discord-html-transcripts'
 
 import { ticketAutocomplete, timestamp, dateToStr } from '../../utils'
 import { TicketService } from '../../../services/ticket.service'
+import { sendLogEmbed } from '../../helpers'
 import { rootGroupName } from './constants'
 import { Color } from '../../../constants'
 
@@ -42,15 +43,11 @@ export class TicketCommand {
     id: string | null,
     interaction: CommandInteraction
   ) {
-    const channel = await interaction.guild?.channels.fetch(
-      id || interaction.channelId
-    )
+    const channel = await interaction.guild?.channels.fetch(id || interaction.channelId)
 
     if (!channel || !channel.isTextBased()) {
-      return await interaction.followUp({
-        content: `Канал ${
-          id || interaction.channelId
-        } не найден или он не текстовый`
+      return interaction.followUp({
+        content: `Канал ${id || interaction.channelId} не найден или он не текстовый`
       })
     }
 
@@ -85,7 +82,7 @@ export class TicketCommand {
 
     const tickets = await this.ticketService.getListByUnknownId({ id })
     if (!tickets.length) {
-      return await interaction.followUp({
+      return interaction.followUp({
         content: `Тикеты с id ${id} не найдены`
       })
     }
@@ -94,8 +91,7 @@ export class TicketCommand {
       channel: tickets.every((t) => t.channelId === id),
       user: tickets.every((t) => t.userId === id)
     }
-    const threads = (await interaction.guild!.channels.fetchActiveThreads())
-      .threads
+    const threads = (await interaction.guild!.channels.fetchActiveThreads()).threads
 
     const embed = new EmbedBuilder()
       .setDescription(
@@ -104,9 +100,7 @@ export class TicketCommand {
           : 'Тикет' +
               (by.user
                 ? ` ${
-                    interaction.guild?.members.cache.get(id)
-                      ? 'участника'
-                      : 'пользователя'
+                    interaction.guild?.members.cache.get(id) ? 'участника' : 'пользователя'
                   } ${userMention(id)}`
                 : by.channel
                 ? ` в канале ${channelMention(id)}`
@@ -152,29 +146,25 @@ export class TicketCommand {
       ephemeral: true
     })
 
-    const channel = (await interaction.guild?.channels.fetch(
+    const thread = (await interaction.guild?.channels.fetch(
       id || interaction.channelId
-    )) as ThreadChannel | undefined
+    )) as ThreadChannel
 
-    if (!channel || !channel.isTextBased()) {
-      return await interaction.followUp({
+    if (!thread || !thread.isTextBased()) {
+      return interaction.followUp({
         content: 'Канал не найден или он не текстовый'
       })
     }
 
     const ticket = await this.ticketService.getOne({
-      channelId: channel.id
+      channelId: thread.id
     })
 
     if (!ticket) {
-      return await interaction.followUp({
-        content: `Тикет канала ${channelMention(
-          channel.id
-        )} не найден в базе данных`
-      })
+      throw new Error('Тикет не найден')
     }
 
-    await this.ticketService.delete({
+    await this.ticketService.close({
       id: ticket.id
     })
 
@@ -192,15 +182,91 @@ export class TicketCommand {
       )
       .setColor(Color.Red)
       .setFooter({
-        iconURL: (
-          await interaction.guild?.members.fetch(interaction.user.id)
-        )?.displayAvatarURL(),
+        iconURL: (await interaction.guild?.members.fetch(interaction.user.id))?.displayAvatarURL(),
         text: ticket.id
       })
 
-    await channel.send({ embeds: [embed] })
-    channel.setLocked(true)
-    channel.setArchived(true)
+    await sendLogEmbed({ thread, client: interaction.client, ticket, embed })
+    thread.setLocked(true)
+    thread.setArchived(true)
     interaction.followUp({ content: 'Тикет успешно закрыт' })
+  }
+
+  @Slash({
+    description: 'Открыть закрытый тикет',
+    name: 'reopen'
+  })
+  public async reopen(
+    @SlashOption({
+      autocomplete: (i) => ticketAutocomplete(i, { returnChannel: true, closed: true }),
+      description: 'ID тикета (оставьте пустым, чтобы открыть текущий)',
+      type: ApplicationCommandOptionType.String,
+      required: false,
+      name: 'id'
+    })
+    id: string | null,
+    @SlashOption({
+      type: ApplicationCommandOptionType.String,
+      description: 'Причина открытия',
+      required: false,
+      name: 'reason'
+    })
+    reason: string | null,
+    interaction: CommandInteraction
+  ) {
+    await interaction.deferReply({
+      ephemeral: true
+    })
+
+    const thread = (await interaction.guild?.channels.fetch(
+      id || interaction.channelId
+    )) as ThreadChannel
+
+    if (!thread || !thread.isTextBased()) {
+      return interaction.followUp({
+        content: 'Ветка не найдена'
+      })
+    }
+
+    if (!thread.locked && !thread.archived) {
+      return interaction.followUp({
+        content: 'Ветка не закрыта'
+      })
+    }
+
+    const ticket = await this.ticketService.getOne({
+      channelId: thread.id
+    })
+
+    if (!ticket) {
+      throw new Error('Тикет не найден')
+    }
+
+    await this.ticketService.reopen({
+      id: ticket.id
+    })
+
+    const embed = new EmbedBuilder()
+      .setTitle('Повторное открытие тикета')
+      .setFields(
+        {
+          value: userMention(ticket.userId),
+          name: 'Открыл'
+        },
+        {
+          value: codeBlock(reason || 'Не указана'),
+          name: 'Причина'
+        }
+      )
+      .setColor(Color.Green)
+      .setFooter({
+        iconURL: (await interaction.guild?.members.fetch(interaction.user.id))?.displayAvatarURL(),
+        text: ticket.id
+      })
+
+    await sendLogEmbed({ thread, client: interaction.client, ticket, embed })
+    thread.setLocked(false)
+    thread.setArchived(false)
+    interaction.followUp({ content: 'Тикет успешно открыт' })
   }
 }

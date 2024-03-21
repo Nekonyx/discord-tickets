@@ -1,8 +1,10 @@
 import { IntentsBitField } from 'discord.js'
 import { Client } from 'discordx'
 
+import { TicketUserService } from '../services/ticket-user.service'
+import { TicketService } from '../services/ticket.service'
 import { ServerService } from '../services/server.service'
-import { createErrorEmbed } from './helpers'
+import { createThreadNameChangeEmbed, createErrorEmbed, logAction } from './helpers'
 import { captureError } from './utils'
 
 export const bot = new Client({
@@ -15,15 +17,15 @@ export const bot = new Client({
   ]
 })
 
+const ticketUserService = new TicketUserService()
+const ticketService = new TicketService()
 const serverService = new ServerService()
 
 bot.once('ready', async () => {
   const guilds = await bot.guilds.fetch()
   const servers = await serverService.getList()
 
-  for (const guild of guilds
-    .filter((g) => !servers.find((s) => s.guildId === g.id))
-    .values()) {
+  for (const guild of guilds.filter((g) => !servers.find((s) => s.guildId === g.id)).values()) {
     await serverService.create({ guildId: guild.id })
   }
 
@@ -42,6 +44,28 @@ bot.on('guildCreate', (guild) => {
 
 bot.on('guildDelete', (guild) => {
   serverService.delete({ guildId: guild.id })
+})
+
+// Обработчик покинувших тикет пользователей
+bot.on('threadMembersUpdate', async (_, removedMembers, thread) => {
+  if (!removedMembers.size || !thread.parent) return
+  const ticket = await ticketService.getOne({ channelId: thread.id })
+  if (!ticket) return
+
+  for (const member of removedMembers.values()) {
+    ticketUserService.delete({ conditions: { ticketId: ticket.id, userId: member.id } })
+  }
+})
+
+bot.on('threadUpdate', async (oldThread, newThread) => {
+  // Логирование обновлений названий тикетов
+  if (
+    oldThread.name !== newThread.name &&
+    (await ticketService.getOne({ channelId: newThread.id }))
+  ) {
+    const embed = createThreadNameChangeEmbed({ oldThread, newThread })
+    await logAction({ thread: newThread, client: bot, embed })
+  }
 })
 
 // Выполнение команд с обработкой ошибок

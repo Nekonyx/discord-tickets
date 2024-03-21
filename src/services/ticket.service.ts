@@ -49,9 +49,15 @@ export class TicketService {
     await this.repo.softDelete(this.makeConditions(params))
   }
 
-  public async getOne(
-    params: IGetOneTicketParams = {}
-  ): Promise<undefined | Ticket> {
+  public async close(params: IGetOneTicketParams): Promise<void> {
+    await this.repo.update(this.makeConditions(params), { isClosed: true })
+  }
+
+  public async reopen(params: IGetOneTicketParams): Promise<void> {
+    await this.repo.update(this.makeConditions(params), { isClosed: false })
+  }
+
+  public async getOne(params: IGetOneTicketParams = {}): Promise<undefined | Ticket> {
     const ticket = await this.repo.findOne({
       where: this.makeConditions(params),
       ...params.opts
@@ -66,9 +72,7 @@ export class TicketService {
     })
   }
 
-  public async getListByUnknownId(
-    params: IGetTicketListParams = {}
-  ): Promise<Ticket[]> {
+  public async getListByUnknownId(params: IGetTicketListParams = {}): Promise<Ticket[]> {
     const { id } = params
     return this.repo.find({
       where: [
